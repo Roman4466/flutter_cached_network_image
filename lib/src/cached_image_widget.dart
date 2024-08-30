@@ -267,14 +267,17 @@ class CachedNetworkImage extends StatelessWidget {
       image: _image,
       imageBuilder: (context, child) {
         // Call the onLoadingFinishedListener when the image is fully loaded
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          onLoadingFinishedListener?.call();
-        });
+        _callOnLoadingFinishedListener();
         return imageBuilder != null ? imageBuilder!(context, _image) : child;
       },
       placeholderBuilder: octoPlaceholderBuilder,
       progressIndicatorBuilder: octoProgressIndicatorBuilder,
-      errorBuilder: errorWidget != null ? _octoErrorBuilder : null,
+      errorBuilder: errorWidget != null
+          ? (BuildContext context, Object error, StackTrace? stackTrace) {
+              _callOnLoadingFinishedListener();
+              return _octoErrorBuilder(context, error, stackTrace);
+            }
+          : null,
       fadeOutDuration: fadeOutDuration,
       fadeOutCurve: fadeOutCurve,
       fadeInDuration: fadeInDuration,
@@ -293,6 +296,12 @@ class CachedNetworkImage extends StatelessWidget {
       memCacheWidth: memCacheWidth,
       memCacheHeight: memCacheHeight,
     );
+  }
+
+  void _callOnLoadingFinishedListener() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      onLoadingFinishedListener?.call();
+    });
   }
 
   Widget _octoImageBuilder(BuildContext context, Widget child) {
