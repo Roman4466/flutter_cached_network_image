@@ -42,8 +42,7 @@ class CachedNetworkImage extends StatelessWidget {
   static CacheManagerLogLevel get logLevel => CacheManager.logLevel;
 
   /// Set the log level of the cache manager to a [CacheManagerLogLevel].
-  static set logLevel(CacheManagerLogLevel level) =>
-      CacheManager.logLevel = level;
+  static set logLevel(CacheManagerLogLevel level) => CacheManager.logLevel = level;
 
   /// Evict an image from both the disk file based caching system of the
   /// [BaseCacheManager] as the in memory [ImageCache] of the [ImageProvider].
@@ -55,8 +54,7 @@ class CachedNetworkImage extends StatelessWidget {
     BaseCacheManager? cacheManager,
     double scale = 1,
   }) async {
-    final effectiveCacheManager =
-        cacheManager ?? CachedNetworkImageProvider.defaultCacheManager;
+    final effectiveCacheManager = cacheManager ?? CachedNetworkImageProvider.defaultCacheManager;
     await effectiveCacheManager.removeFile(cacheKey ?? url);
     return CachedNetworkImageProvider(url, scale: scale).evict();
   }
@@ -204,6 +202,7 @@ class CachedNetworkImage extends StatelessWidget {
 
   /// Listener to be called when images fails to load.
   final ValueChanged<Object>? errorListener;
+  final VoidCallback? onLoadingFinishedListener;
 
   /// CachedNetworkImage shows a network image using a caching mechanism. It also
   /// provides support for a placeholder, showing an error and fading into the
@@ -239,8 +238,8 @@ class CachedNetworkImage extends StatelessWidget {
     this.maxWidthDiskCache,
     this.maxHeightDiskCache,
     this.errorListener,
-    ImageRenderMethodForWeb imageRenderMethodForWeb =
-        ImageRenderMethodForWeb.HtmlImage,
+    this.onLoadingFinishedListener,
+    ImageRenderMethodForWeb imageRenderMethodForWeb = ImageRenderMethodForWeb.HtmlImage,
     double scale = 1.0,
   }) : _image = CachedNetworkImageProvider(
           imageUrl,
@@ -256,22 +255,23 @@ class CachedNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var octoPlaceholderBuilder =
-        placeholder != null ? _octoPlaceholderBuilder : null;
+    var octoPlaceholderBuilder = placeholder != null ? _octoPlaceholderBuilder : null;
     final octoProgressIndicatorBuilder =
         progressIndicatorBuilder != null ? _octoProgressIndicatorBuilder : null;
 
-    ///If there is no placeholder OctoImage does not fade, so always set an
-    ///(empty) placeholder as this always used to be the behaviour of
-    ///CachedNetworkImage.
-    if (octoPlaceholderBuilder == null &&
-        octoProgressIndicatorBuilder == null) {
+    if (octoPlaceholderBuilder == null && octoProgressIndicatorBuilder == null) {
       octoPlaceholderBuilder = (context) => Container();
     }
 
     return OctoImage(
       image: _image,
-      imageBuilder: imageBuilder != null ? _octoImageBuilder : null,
+      imageBuilder: (context, child) {
+        // Call the onLoadingFinishedListener when the image is fully loaded
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onLoadingFinishedListener?.call();
+        });
+        return imageBuilder != null ? imageBuilder!(context, _image) : child;
+      },
       placeholderBuilder: octoPlaceholderBuilder,
       progressIndicatorBuilder: octoProgressIndicatorBuilder,
       errorBuilder: errorWidget != null ? _octoErrorBuilder : null,
